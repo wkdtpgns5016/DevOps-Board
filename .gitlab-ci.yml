@@ -141,7 +141,7 @@ deploy-local:
         -e DB_PORT=3306 \
         -e DB_USERNAME=root \
         -e DB_PASSWORD=rootpassword \
-        -e DB_NAME=devops_board \
+        -e DB_DATABASE=devops_board \
         -e FRONTEND_URL="http://localhost:8080" \
         -p 3000:3000 \
         "$BACK_IMAGE"
