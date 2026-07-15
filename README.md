@@ -1,2 +1,7 @@
 간단한 웹서비스를 3티어 웹 아키텍처로 설계
 GitLab을 활용한 CI/CD 자동 파이프라인 설계
+
+```bash
+docker compose up -d
+docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
+```

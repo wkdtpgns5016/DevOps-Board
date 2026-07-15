@@ -1,1 +1,5 @@
 .vscode/
+gitlab/config/
+gitlab/logs/
+gitlab/data/
+gitlab/runner/config/
