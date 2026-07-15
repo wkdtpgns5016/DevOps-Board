@@ -1,17 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 💡 ConfigService 인스턴스 꺼내오기
+  const configService = app.get(ConfigService);
+  const frontendUrl = configService.get<string>('FRONTEND_URL');
+
   app.enableCors({
-    origin: [
-      'http://localhost:5173', // 로컬 테스트용 허용
-       // S3 배포 주소 허용
-    ],
+    origin: [frontendUrl,],
     methods: 'GET,POST,PUT,DELETE',
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();
