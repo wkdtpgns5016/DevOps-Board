@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 export default function BoardWrite() {
   const navigate = useNavigate();
   
-  // 입력 폼 상태 관리
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [category, setCategory] = useState('Development');
@@ -12,22 +11,48 @@ export default function BoardWrite() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // 💡 나중에 백엔드 API와 연결할 영역입니다.
-    alert(`글이 임시 저장되었습니다!\n제목: ${title}\n작성자: ${author}\n카테고리: ${category}`);
+
+    // 1. 기존 로컬스토리지에 저장된 글 가져오기 (없으면 빈 배열)
+    const existingPostsRaw = localStorage.getItem('devops_posts');
+    const existingPosts = existingPostsRaw ? JSON.parse(existingPostsRaw) : [
+      { 
+        id: 1, 
+        title: 'Vite React + NestJS 게시판 프로젝트 시작!', 
+        summary: '프론트엔드와 백엔드의 아키텍처 설계를 마치고 드디어 본격적인 개발 단계에 진입합니다. 첫 페이지 라우팅 성공!',
+        author: '장세훈', 
+        createdAt: '2026-07-15',
+        category: 'Development',
+        content: '프론트엔드와 백엔드의 아키텍처 설계를 마치고 드디어 본격적인 개발 단계에 진입합니다. 첫 페이지 라우팅도 완벽하게 성공했습니다. 앞으로 최신 Tailwind CSS v4를 활용한 힙한 디자인을 입히고, 백엔드 NestJS와의 API 조율 과정을 거치며 점점 더 완성도 높은 애플리케이션을 완성해 나갈 예정입니다.'
+      }
+    ];
+
+    // 2. 새 포스트 객체 생성 (id는 겹치지 않게 고유값 타임스탬프 활용)
+    const newPost = {
+      id: Date.now(), // 고유 ID
+      title,
+      summary: content.substring(0, 100) + (content.length > 100 ? '...' : ''), // 앞 100자만 요약
+      author,
+      createdAt: new Date().toISOString().split('T')[0], // YYYY-MM-DD 포맷
+      category,
+      content
+    };
+
+    // 3. 기존 목록에 추가 후 로컬스토리지 저장
+    const updatedPosts = [newPost, ...existingPosts];
+    localStorage.setItem('devops_posts', JSON.stringify(updatedPosts));
+
+    // 4. 메인 목록 화면으로 이동
     navigate('/');
   };
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      {/* 헤더 */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">✍️ 새 포스트 작성</h1>
         <p className="text-sm text-gray-500 mt-1">새로운 기술 정보나 개발 경험을 공유해 주세요.</p>
       </div>
 
-      {/* 폼 레이아웃 */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 제목 입력 */}
         <div>
           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">제목</label>
           <input 
@@ -40,7 +65,6 @@ export default function BoardWrite() {
           />
         </div>
 
-        {/* 작성자 & 카테고리 (2열 구성) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">작성자</label>
@@ -67,7 +91,6 @@ export default function BoardWrite() {
           </div>
         </div>
 
-        {/* 본문 입력 */}
         <div>
           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">내용</label>
           <textarea 
@@ -80,7 +103,6 @@ export default function BoardWrite() {
           />
         </div>
 
-        {/* 하단 버튼 제어 */}
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-50">
           <button 
             type="button"
