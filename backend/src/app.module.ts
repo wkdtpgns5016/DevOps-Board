@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BoardModule } from './board/board.module';
+import { Board } from './board/entities/board.entity';
 
 @Module({
   imports: [
@@ -11,7 +13,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     
     // 2. TypeORM을 사용한 MySQL 자동 연결 설정
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
+      imports: [
+        ConfigModule,
+        TypeOrmModule.forFeature([Board])],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'mysql',
@@ -24,6 +28,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         synchronize: true, // ⚠️ 개발 환경 전용: 코드를 바탕으로 테이블을 자동 생성해 줍니다.
       }),
     }),
+    
+    BoardModule,
   ],
 })
 export class AppModule {}
