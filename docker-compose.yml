@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  # 1. MySQL 데이터베이스 컨테이너 설정
+  db:
+    image: mysql:8.0
+    container_name: devops-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: secret_password_123 # 🔑 MySQL root 계정 비밀번호 - 추후 환경변수로 집어넣어 정보은닉 할것
+      MYSQL_DATABASE: devops_board             # 🗄️ 컨테이너가 켜지면서 자동으로 생성할 데이터베이스 이름
+    ports:
+      - "3306:3306"                            # 로컬 컴퓨터의 3306 포트와 컨테이너 내부의 3306 포트 연결
+    volumes:
+      - mysql_data:/var/lib/mysql              # 컨테이너를 지워도 데이터가 보존되도록 하드에 볼륨 마운트
+    networks:
+      - board-network
+
+# 데이터가 저장될 볼륨 정의
+volumes:
+  mysql_data:
+
+# 서비스들이 통신할 공유 네트워크 정의
+networks:
+  board-network:
