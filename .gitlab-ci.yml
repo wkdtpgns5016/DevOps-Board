@@ -142,7 +142,7 @@ deploy-local:
         -e DB_USERNAME=root \
         -e DB_PASSWORD=rootpassword \
         -e DB_DATABASE=devops_board \
-        -e FRONTEND_URL=""http://gitlab.sehjang.kro.kr:8080" \
+        -e FRONTEND_URL="http://gitlab.sehjang.kro.kr:8080" \
         -p 3000:3000 \
         "$BACK_IMAGE"
 
