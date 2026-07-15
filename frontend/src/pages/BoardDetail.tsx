@@ -21,7 +21,7 @@ export default function BoardDetail() {
     if (!id) return;
     const fetchPostDetail = async () => {
       try {
-        const response = await fetch(`${API_URL}/${id}`);
+        const response = await fetch(`${API_URL}/board/${id}`);
         if (!response.ok) throw new Error('포스트 상세 불러오기 실패');
         const data = await response.json();
         setPost(data);
@@ -36,7 +36,7 @@ export default function BoardDetail() {
   const handleDelete = async () => {
     if (window.confirm('정말 이 포스트를 삭제하시겠습니까?')) {
       try {
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await fetch(`${API_URL}/board/${id}`, {
           method: 'DELETE',
         });
         if (!response.ok) throw new Error('글 삭제 실패');

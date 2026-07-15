@@ -19,7 +19,7 @@ export default function BoardList() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch(API_URL);
+        const response = await fetch(`${API_URL}/board`);
         if (!response.ok) throw new Error('데이터 로드 실패');
         const data = await response.json();
         setPosts(data);

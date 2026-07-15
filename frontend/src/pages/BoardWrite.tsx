@@ -22,7 +22,7 @@ export default function BoardWrite() {
 
     try {
       // 🚀 백엔드 API로 새 데이터 등록 요청 (POST)
-      const response = await fetch(API_URL, {
+      const response = await fetch(`${API_URL}/board`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
