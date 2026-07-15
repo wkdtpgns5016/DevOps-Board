@@ -1,30 +1,29 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import BoardList from './pages/BoardList';
 import BoardDetail from './pages/BoardDetail';
 import BoardWrite from './pages/BoardWrite';
 
 function App() {
   return (
+    // 💡 BrowserRouter를 App.tsx 내부에 직접 탑재하여 라우터가 없는 에러를 완벽하게 방지합니다!
     <BrowserRouter>
-      {/* 화면 전체를 감싸는 기본 레이아웃 컨테이너 */}
-      <div className="min-h-screen bg-gray-50 text-gray-900">
-        <header className="bg-white shadow-sm py-4 px-6 mb-6">
-          <div className="max-w-4xl mx-auto flex justify-between items-center">
-            <span className="text-xl font-extrabold text-blue-600 cursor-pointer">
-              DevOps-Board 🚀
-            </span>
-            <span className="text-sm text-gray-500">React + TS + Tailwind</span>
+      <div className="min-h-screen bg-slate-50 text-slate-800">
+        {/* 🚀 상단 내비게이션 바 */}
+        <header className="border-b border-slate-200 bg-white px-8 py-4">
+          <div className="mx-auto flex max-w-6xl items-center justify-between">
+            <Link to="/" className="flex items-center gap-2 cursor-pointer no-underline">
+              <span className="text-2xl font-black tracking-tight text-blue-600">DevOps-Board🚀</span>
+            </Link>
+            <span className="text-sm font-semibold text-slate-400">React + TS + Tailwind</span>
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto bg-white rounded-lg shadow-md min-h-[500px]">
+        {/* 📂 메인 콘텐츠 및 라우터 스위칭 영역 */}
+        <main className="mx-auto max-w-6xl px-6 py-10">
           <Routes>
-            {/* 기본 경로: 목록 페이지 */}
             <Route path="/" element={<BoardList />} />
-            {/* /write 경로: 글 작성 페이지 */}
-            <Route path="/write" element={<BoardWrite />} />
-            {/* /post/:id 경로: 글 상세 페이지 (:id는 동적 파라미터) */}
             <Route path="/post/:id" element={<BoardDetail />} />
+            <Route path="/write" element={<BoardWrite />} />
           </Routes>
         </main>
       </div>

@@ -14,28 +14,35 @@ export default function BoardDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
+  const API_URL = 'http://localhost:3000/board';
 
+  // 🔄 백엔드에서 특정 ID의 포스트만 상세 조회
   useEffect(() => {
-    const savedPosts = localStorage.getItem('devops_posts');
-    if (savedPosts && id) {
-      const posts: Post[] = JSON.parse(savedPosts);
-      // URL 파라미터 id와 일치하는 포스트 검색 (타입 변환 주의)
-      const foundPost = posts.find((p) => p.id === Number(id));
-      if (foundPost) {
-        setPost(foundPost);
+    if (!id) return;
+    const fetchPostDetail = async () => {
+      try {
+        const response = await fetch(`${API_URL}/${id}`);
+        if (!response.ok) throw new Error('포스트 상세 불러오기 실패');
+        const data = await response.json();
+        setPost(data);
+      } catch (error) {
+        console.error('Error fetching post detail:', error);
       }
-    }
+    };
+    fetchPostDetail();
   }, [id]);
 
-  // 글 삭제 기능 추가
-  const handleDelete = () => {
+  // 🗑️ 백엔드 DELETE 요청으로 글 삭제
+  const handleDelete = async () => {
     if (window.confirm('정말 이 포스트를 삭제하시겠습니까?')) {
-      const savedPosts = localStorage.getItem('devops_posts');
-      if (savedPosts && id) {
-        const posts: Post[] = JSON.parse(savedPosts);
-        const filteredPosts = posts.filter((p) => p.id !== Number(id));
-        localStorage.setItem('devops_posts', JSON.stringify(filteredPosts));
-        navigate('/');
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('글 삭제 실패');
+        navigate('/'); // 삭제 성공 시 홈으로 리다이렉트
+      } catch (error) {
+        console.error('Error deleting post:', error);
       }
     }
   };
@@ -50,7 +57,8 @@ export default function BoardDetail() {
   }
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto">
+      {/* 🔙 목록으로 돌아가기 버튼 (상단 내비게이션 역할) */}
       <button 
         onClick={() => navigate('/')}
         className="text-xs font-bold text-blue-500 hover:text-blue-600 mb-6 flex items-center gap-1.5 transition-colors"
@@ -58,35 +66,32 @@ export default function BoardDetail() {
         ← 목록으로 돌아가기
       </button>
 
-      <header className="mb-8 pb-6 border-b border-gray-100">
-        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2.5 py-1 rounded-full">
-          {post.category}
-        </span>
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight mt-3 mb-4 leading-tight">
-          {post.title}
-        </h1>
-        <div className="flex items-center gap-3 text-sm text-gray-500">
-          <span className="font-semibold text-gray-700">{post.author}</span>
-          <span className="text-slate-300">•</span>
-          <span className="font-mono">{post.createdAt}</span>
-        </div>
-      </header>
+      {/* 💡 상세 보기 흰색 카드 컨테이너 */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-10 shadow-sm">
+        <header className="mb-8 pb-6 border-b border-gray-100">
+          <span className="text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2.5 py-1 rounded-full">
+            {post.category}
+          </span>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight mt-3 mb-4 leading-tight">
+            {post.title}
+          </h1>
+          <div className="flex items-center gap-3 text-sm text-gray-500">
+            <span className="font-semibold text-gray-700">{post.author}</span>
+            <span className="text-slate-300">•</span>
+            <span className="font-mono">{new Date(post.createdAt).toLocaleDateString()}</span>
+          </div>
+        </header>
 
-      <article className="prose max-w-none text-gray-700 leading-relaxed text-base whitespace-pre-line">
-        {post.content}
-      </article>
+        {/* 📝 아티클 본문 */}
+        <article className="prose max-w-none text-gray-700 leading-relaxed text-base whitespace-pre-line">
+          {post.content}
+        </article>
 
-      <div className="mt-12 pt-6 border-t border-gray-100 flex justify-between">
-        <button 
-          onClick={() => navigate('/')}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
-        >
-          목록
-        </button>
-        <div className="flex gap-2">
+        {/* 🔘 하단 액션 버튼 영역 (삭제 버튼을 둥근 빨간 사각형 형태로 트렌디하게 변경) */}
+        <div className="mt-12 pt-6 border-t border-gray-100 flex justify-end">
           <button 
             onClick={handleDelete}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
           >
             삭제
           </button>

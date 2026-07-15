@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 interface Post {
   id: number;
   title: string;
-  summary: string;
+  content: string; // 💡 DB에서 가져올 본문 내용
   author: string;
   createdAt: string;
   category: string;
@@ -13,25 +13,21 @@ interface Post {
 export default function BoardList() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
+  const API_URL = 'http://localhost:3000/board';
 
-  // 화면이 켜질 때 로컬스토리지에서 데이터를 읽어옵니다.
+  // 🔄 화면 진입 시 백엔드 API 데이터 호출
   useEffect(() => {
-    const savedPosts = localStorage.getItem('devops_posts');
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts));
-    } else {
-      // 데이터가 아예 없을 때 보여줄 기본 첫 글 세팅
-      const initialPost: Post = { 
-        id: 1, 
-        title: 'Vite React + NestJS 게시판 프로젝트 시작!', 
-        summary: '프론트엔드와 백엔드의 아키텍처 설계를 마치고 드디어 본격적인 개발 단계에 진입합니다. 첫 페이지 라우팅 성공!',
-        author: '장세훈', 
-        createdAt: '2026-07-15',
-        category: 'Development'
-      };
-      setPosts([initialPost]);
-      localStorage.setItem('devops_posts', JSON.stringify([initialPost]));
-    }
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('데이터 로드 실패');
+        const data = await response.json();
+        setPosts(data);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+      }
+    };
+    fetchPosts();
   }, []);
 
   return (
@@ -74,15 +70,18 @@ export default function BoardList() {
                 }`}>
                   {post.category}
                 </span>
-                <span className="text-gray-400 font-mono">{post.createdAt}</span>
+                <span className="text-gray-400 font-mono">
+                  {new Date(post.createdAt).toLocaleDateString()}
+                </span>
               </div>
 
               <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 line-clamp-1">
                 {post.title}
               </h2>
 
+              {/* 💡 백엔드 content 기반으로 summary 대체 */}
               <p className="text-gray-500 text-sm mt-2 line-clamp-2 leading-relaxed">
-                {post.summary}
+                {post.content}
               </p>
             </div>
 
