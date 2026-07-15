@@ -13,7 +13,7 @@ interface Post {
 export default function BoardList() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
-  const API_URL = 'http://localhost:3000/board';
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // 🔄 화면 진입 시 백엔드 API 데이터 호출
   useEffect(() => {

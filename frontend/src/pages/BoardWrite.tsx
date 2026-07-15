@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function BoardWrite() {
   const navigate = useNavigate();
-  const API_URL = 'http://localhost:3000/board';
+  const API_URL = import.meta.env.VITE_API_URL;
   
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');

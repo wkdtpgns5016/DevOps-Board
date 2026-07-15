@@ -27,7 +27,11 @@ build-frontend:
   script:
     - cd frontend
     - npm ci
-    - npm run build
+    - |
+      # 💡 빌드할 때 환경 변수를 주입합니다. 
+      # 현재 테스트 환경이므로 우분투 호스트 IP(예: 192.168.0.10)와 백엔드 포트를 적어줍니다!
+      # 나중에 AWS로 가면 AWS 백엔드 DNS 주소를 적으시면 됩니다.
+      VITE_API_URL="http://192.168.0.10:3000" npm run build
   artifacts:
     paths:
       - frontend/dist/   # 💡 빌드된 React 정적 파일들을 다음 단계로 안전하게 인계!
@@ -138,6 +142,7 @@ deploy-local:
         -e DB_USERNAME=root \
         -e DB_PASSWORD=rootpassword \
         -e DB_NAME=devops_board \
+        -e FRONTEND_URL="http://localhost:8080" \
         -p 3000:3000 \
         "$BACK_IMAGE"
 

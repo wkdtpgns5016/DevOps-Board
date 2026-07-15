@@ -14,8 +14,8 @@ export default function BoardDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
-  const API_URL = 'http://localhost:3000/board';
-
+  const API_URL = import.meta.env.VITE_API_URL;
+  
   // 🔄 백엔드에서 특정 ID의 포스트만 상세 조회
   useEffect(() => {
     if (!id) return;
