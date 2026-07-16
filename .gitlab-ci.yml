@@ -137,7 +137,7 @@ deploy-local:
   before_script:
     - mkdir -p /etc/docker
     - echo '{"insecure-registries":["127.0.0.1:5050"]}' > /etc/docker/daemon.json
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY_IMAGE
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin 127.0.0.1:5050
   script:
     # 1. 깃랩 보관소 및 도커허브로부터 백엔드 및 MySQL 이미지 Pull 받아오기
     - docker pull "127.0.0.1:5050/root/devops-board/backend:latest"
