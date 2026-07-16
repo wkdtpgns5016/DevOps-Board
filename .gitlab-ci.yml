@@ -90,7 +90,7 @@ docker-build-all:
   image: docker:27
   needs: ["build-frontend", "build-backend", "test-frontend", "test-backend"]
   before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $REGISTRY_HOST
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
   script:
     # 💡 각자 폴더(Build Context) 내부의 Dockerfile과 소스코드를 사용해 이미지를 굽습니다.
     - docker build -t "$FRONT_IMAGE" ./frontend
