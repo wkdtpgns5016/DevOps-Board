@@ -1,0 +1,10 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ec2-user/board-backend/ # S3에서 압축을 풀어서 보관할 EC2 내부 경로
+hooks:
+  ApplicationStart:
+    - location: deploy.sh # 압축 해제 후 실행할 쉘 스크립트 파일 위치
+      timeout: 300
+      runas: root

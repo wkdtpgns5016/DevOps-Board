@@ -133,74 +133,37 @@ deploy-frontend-s3:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
-# ⚙️ [백엔드 & DB 배포] 호스트 우분투 로컬 도커 기동 (기존 흐름 유지)
-deploy-local:
+# ⚙️ [백엔드 배포] S3로 배포 정의서 업로드 및 CodeDeploy 트리거
+deploy-backend-aws:
   stage: deploy
-  image: docker:27
-  # 💡 [새로운 백엔드 인스턴스용 러너 설정 시 필수]
-  # 새 백엔드 인스턴스에 깃랩 러너를 설치하고 해당 러너의 태그(예: backend-runner)를 아래 등록해주세요.
-  # tags:
-  #   - backend-runner
+  image: 
+    name: amazon/aws-cli:latest
+    entrypoint: [""]
   needs: ["docker-build-all"]
   before_script:
-    - mkdir -p /etc/docker
-    # 💡 [보정] 싱글 쿼트 내부 변수 대입 에러 우회 적용 및 따옴표 기호 이스케이프 처리 완료
-    - echo "{\"insecure-registries\":[\"${PRIVATE_IP}:5050\"]}" > /etc/docker/daemon.json
-    # 💡 [보정] 주소 앞에 http:// 를 강제로 붙여 HTTPS 강제 통신을 우회합니다!
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "http://${PRIVATE_IP}:5050"
+    # 🔑 AWS CLI 자격증명 주입 (MFA 임시 키 또는 IAM User 키 활용)
+    - /usr/local/bin/aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    - /usr/local/bin/aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    - /usr/local/bin/aws configure set aws_session_token "$AWS_SESSION_TOKEN"
+    - /usr/local/bin/aws configure set default.region "$AWS_REGION"
   script:
-    # 1. 깃랩 보관소 및 도커허브로부터 백엔드 및 MySQL 이미지 Pull 받아오기
-    - docker pull "${PRIVATE_IP}:5050/root/devops-board/backend:latest"
-    - docker pull mysql:8.0
-
-    # 2. 컨테이너들이 서로 통신할 가상 네트워크 생성
-    - docker network create $NET_NAME 2>/dev/null || true
-
-    # 3. 기존에 돌아가고 있던 백엔드, DB 컨테이너 삭제
-    - docker rm -f $BACK_CONTAINER 2>/dev/null || true
-    - docker rm -f $DB_CONTAINER 2>/dev/null || true
-
-    # 4. 🛢️ MySQL 데이터베이스 컨테이너 실행
+    # 1. 배포에 필요한 appspec.yml과 deploy.sh가 있는 backend 폴더로 이동
+    - cd backend
+    
+    # 2. 💡 [변경] 커밋 해시값을 유니크한 파일명으로 지정하여 압축 진행
+    - zip -r "../$CI_COMMIT_SHA.zip" appspec.yml deploy.sh
+    - cd ..
+    
+    # 3. 💡 [변경] S3 버킷에 커밋 해시명으로 압축 파일 업로드
+    - /usr/local/bin/aws s3 cp "$CI_COMMIT_SHA.zip" "s3://$S3_BUCKET_NAME/$CI_COMMIT_SHA.zip"
+    
+    # 4. 💡 [변경] 요청하신 가독성 높고 이력 추적이 완벽한 형태로 CodeDeploy 배포 생성 실행
     - |
-      docker run -d \
-        --name $DB_CONTAINER \
-        --network $NET_NAME \
-        --restart always \
-        -e MYSQL_ROOT_PASSWORD=$DB_PASSWORD \
-        -e MYSQL_DATABASE=$DB_DATABASE \
-        -p $DB_PORT:3306 \
-        -v board_db_data:/var/lib/mysql \
-        --health-cmd="mysqladmin ping -h localhost -u $DB_USERNAME -p$DB_PASSWORD" \
-        --health-interval=2s \
-        --health-retries=10 \
-        --health-timeout=2s \
-        mysql:8.0
-
-    # 5. ⏳ DB 컨테이너 상태가 'healthy'가 될 때까지 대기
-    - |
-      echo "⏳ 데이터베이스(MySQL)의 내부 부팅 및 초기화 완료를 대기합니다..."
-      while [ "$(docker inspect --format='{{.State.Health.Status}}' $DB_CONTAINER)" != "healthy" ]; do
-        echo "🔄 DB가 아직 준비되지 않았습니다. 2초 후 다시 확인합니다... (현재 상태: $(docker inspect --format='{{.State.Health.Status}}' $DB_CONTAINER))"
-        sleep 2
-      done
-      echo "🟢 데이터베이스가 완벽하게 가동되었습니다! 백엔드 배포를 진행합니다."
-
-    # 6. ⚙️ NestJS 백엔드 컨테이너 실행 (S3 주소가 담긴 FRONTEND_URL을 주입받아 CORS 허용)
-    - |
-      docker run -d \
-        --name $BACK_CONTAINER \
-        --network $NET_NAME \
-        --restart always \
-        -e DB_HOST=$DB_HOST \
-        -e DB_PORT=$DB_PORT \
-        -e DB_USERNAME=$DB_USERNAME \
-        -e DB_PASSWORD=$DB_PASSWORD \
-        -e DB_DATABASE=$DB_DATABASE \
-        -e FRONTEND_URL="$FRONTEND_URL" \
-        -p $BACKEND_PORT:3000 \
-        "${PRIVATE_IP}:5050/root/devops-board/backend:latest"
-
-    # 7. 빌드 도중 생성된 미사용 구형 레이어/이미지 찌꺼기 청소
-    - docker image prune -f
+      /usr/local/bin/aws deploy create-deployment \
+        --application-name "$CODEDEPLOY_NAME" \
+        --deployment-group-name "$CODEDEPLOY_GROUP" \
+        --s3-location "bucket=$S3_BUCKET_NAME,key=$CI_COMMIT_SHA.zip,bundleType=zip" \
+        --region "$AWS_REGION" \
+        --description "GitLab CI/CD - Commit: $CI_COMMIT_SHA"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
