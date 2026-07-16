@@ -45,7 +45,7 @@ default:
 build-frontend:
   stage: build
   script:
-    - cd ../frontend
+    - cd frontend
     - npm ci
     - |
       VITE_API_URL="$BACKEND_URL" npm run build
@@ -57,7 +57,7 @@ build-frontend:
 build-backend:
   stage: build
   script:
-    - cd ../backend
+    - cd backend
     - npm ci
     - npm run build
   artifacts:
@@ -72,14 +72,14 @@ test-frontend:
   stage: test
   needs: ["build-frontend"]
   script:
-    - cd ../frontend
+    - cd frontend
     - npm run test --run || echo "Frontend tests passed"
 
 test-backend:
   stage: test
   needs: ["build-backend"]
   script:
-    - cd ../backend
+    - cd backend
     - npm run test --run || echo "Backend tests passed"
 
 # --------------------------------------------------
