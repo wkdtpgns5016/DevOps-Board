@@ -1,42 +1,83 @@
 #!/bin/bash
-# 💡 깃랩 서버의 사설 IP (혹은 도메인)를 적어줍니다.
 REGISTRY_URL="10.0.138.53:5050"
 IMAGE_NAME="${REGISTRY_URL}/root/devops-board/backend:latest"
-CONTAINER_NAME="board-backend"
+BACKEND_CONTAINER="board-backend"
+DB_CONTAINER="board-db"
+
+# 💡 [보안 최적화] EC2 로컬의 격리된 공간에 존재하는 .env 파일을 로드합니다.
+ENV_FILE="/home/ec2-user/secure-env/.env"
+
+if [ -f "$ENV_FILE" ]; then
+  export $(cat "$ENV_FILE" | grep -v '^#' | xargs)
+else
+  echo "❌ 로컬 안전 경로에 .env 파일이 존재하지 않습니다! 배포를 중단합니다."
+  exit 1
+fi
 
 echo "====================================="
 echo "🚀 배포 시작: $(date)"
 echo "====================================="
 
-# 1. 깃랩 컨테이너 레지스트리 로그인 (러너가 쓰던 자격증명 정보나 배포 토큰 등을 활용하여 로그인 권한 확보가 미리 필요할 수 있습니다)
-# (이미 EC2 내부 도커가 로그인된 상태라면 이 단계는 생략해도 무방합니다)
+# 1. 도커 네트워크가 없을 경우 자동 생성
+if [ ! $(docker network ls | grep board-network) ]; then
+  echo "🌐 board-network 도커 네트워크 생성 중..."
+  docker network create board-network
+fi
 
-# 2. 최신 이미지 가져오기
+# 2. 데이터베이스 DB 컨테이너 기동
+if [ ! $(docker ps -q -f name=$DB_CONTAINER) ]; then
+  echo "🗄️ MySQL DB 컨테이너 ($DB_CONTAINER) 상태 확인 중..."
+  
+  if [ $(docker ps -a -q -f name=$DB_CONTAINER) ]; then
+    echo "🧹 기존 정지된 DB 컨테이너 삭제..."
+    docker rm -f $DB_CONTAINER
+  fi
+
+  echo "🟢 MySQL DB 컨테이너 실행 시작..."
+  docker run -d \
+    --name $DB_CONTAINER \
+    --network board-network \
+    --restart always \
+    -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD \
+    -e MYSQL_DATABASE=$DB_DATABASE \
+    -p 3306:3306 \
+    -v /home/ec2-user/mysql-data:/var/lib/mysql \
+    mysql:8.0
+
+  echo "⏳ DB 엔진 초기 구동 대기 중 (15초)..."
+  sleep 15
+fi
+
+# 3. 로컬 .env에서 읽어온 정보로 안전하게 깃랩 로그인
+echo "🔑 깃랩 레지스트리 자동 로그인 중..."
+if [ ! -z "$GITLAB_USER" ] && [ ! -z "$GITLAB_PASS" ]; then
+  echo "$GITLAB_PASS" | docker login -u "$GITLAB_USER" --password-stdin "$REGISTRY_URL"
+else
+  echo "⚠️ 로컬 .env 파일에 로그인 자격 증명이 누락되었습니다."
+fi
+
+# 4. 최신 백엔드 이미지 가져오기
 echo "📥 최신 도커 이미지 Pull 받는 중..."
 docker pull $IMAGE_NAME
 
-# 3. 기존에 실행 중이던 컨테이너가 있다면 안전하게 중지 및 삭제
-if [ $(docker ps -a -q -f name=$CONTAINER_NAME) ]; then
-  echo "🧹 기존 컨테이너 ($CONTAINER_NAME) 중지 및 삭제 중..."
-  docker stop $CONTAINER_NAME
-  docker rm -f $CONTAINER_NAME
+# 5. 기존 백엔드 컨테이너 중지 및 삭제
+if [ $(docker ps -a -q -f name=$BACKEND_CONTAINER) ]; then
+  echo "🧹 기존 백엔드 컨테이너 ($BACKEND_CONTAINER) 중지 및 삭제 중..."
+  docker stop $BACKEND_CONTAINER
+  docker rm -f $BACKEND_CONTAINER
 fi
 
-# 4. 새 컨테이너 실행
+# 6. 새 백엔드 컨테이너 실행 (로컬 격리 구역의 env-file을 다이렉트로 지정)
 echo "🟢 새 백엔드 컨테이너 실행 중..."
 docker run -d \
-  --name $CONTAINER_NAME \
+  --name $BACKEND_CONTAINER \
   --network board-network \
   --restart always \
-  -e DB_HOST=board-db \
-  -e DB_PORT=3306 \
-  -e DB_USERNAME=root \
-  -e DB_PASSWORD=password \
-  -e DB_DATABASE=board \
+  --env-file "$ENV_FILE" \
   -p 3000:3000 \
   $IMAGE_NAME
 
-# 5. 미사용 구형 이미지 찌꺼기 청소
+# 7. 미사용 구형 이미지 찌꺼기 청소
 echo "🧹 구형 도커 이미지 찌꺼기 청소..."
 docker image prune -f
 
