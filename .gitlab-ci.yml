@@ -5,7 +5,6 @@ stages:
   - deploy
 
 variables:
-
   # DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE
   # HOST_DOMAIN, BACKEND_PORT, FRONTEND_PORT
 
@@ -25,10 +24,15 @@ variables:
   DB_DATABASE: $DB_DATABASE
 
   # 네트워크 주소 환경변수
-  HOST_DOMAIN: $HOST_DOMAIN
+  GITLAB_DOMAIN: $HOST_DOMAIN
+  
+  # 💡 깃랩 서버(기존 EC2)의 프라이빗 IP를 이 변수에 넣어주셔야 합니다. (VPC 내부 전송용)
+  PRIVATE_IP: $PRIVATE_IP
 
   BACKEND_PORT: $BACKEND_PORT
-  BACKEND_URL: "http://$HOST_DOMAIN:$BACKEND_PORT"
+  
+  # 💡 새로 만든 백엔드 인스턴스의 공인 IP가 담긴 주소를 여기에 주입합니다!
+  BACKEND_URL: $BACKEND_URL
 
   # 💡 프론트엔드 URL을 S3 정적 호스팅 주소로 치환합니다.
   FRONTEND_URL: "http://$AWS_FRONTEND_S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com"
@@ -97,10 +101,10 @@ docker-build-all:
     # 2. 호스트 IP(127.0.0.1)를 이용해서 로그인 처리
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin 127.0.0.1:5050
   script:
-    # 💡 [핵심] 빌드할 때 --add-host 옵션을 주어 도커 빌드 내부에서만 도메인을 127.0.0.1로 매핑합니다!
+    # 빌드할 때 --add-host 옵션을 주어 도커 빌드 내부에서만 도메인을 127.0.0.1로 매핑합니다!
     - docker build --add-host gitlab.sehjang.kro.kr:127.0.0.1 -t "$BACK_IMAGE" ./backend
     
-    # 💡 푸시할 때도 127.0.0.1 주소를 직접 찔러서 호스트 외부(ALB)로 나가지 않고 내부에서 직접 푸시합니다.
+    # 푸시할 때도 127.0.0.1 주소를 직접 찔러서 호스트 외부(ALB)로 나가지 않고 내부에서 직접 푸시합니다.
     - docker tag "$BACK_IMAGE" "127.0.0.1:5050/root/devops-board/backend:latest"
     - docker push "127.0.0.1:5050/root/devops-board/backend:latest"
   rules:
@@ -133,14 +137,19 @@ deploy-frontend-s3:
 deploy-local:
   stage: deploy
   image: docker:27
+  # 💡 [새로운 백엔드 인스턴스용 러너 설정 시 필수]
+  # 새 백엔드 인스턴스에 깃랩 러너를 설치하고 해당 러너의 태그(예: backend-runner)를 아래 등록해주세요.
+  # tags:
+  #   - backend-runner
   needs: ["docker-build-all"]
   before_script:
     - mkdir -p /etc/docker
-    - echo '{"insecure-registries":["127.0.0.1:5050"]}' > /etc/docker/daemon.json
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin 127.0.0.1:5050
+    # 💡 [보정] 싱글 쿼트 내부 변수 대입 에러 우회 적용 및 따옴표 기호 이스케이프 처리 완료
+    - echo "{\"insecure-registries\":[\"${PRIVATE_IP}:5050\"]}" > /etc/docker/daemon.json
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "${PRIVATE_IP}:5050"
   script:
     # 1. 깃랩 보관소 및 도커허브로부터 백엔드 및 MySQL 이미지 Pull 받아오기
-    - docker pull "127.0.0.1:5050/root/devops-board/backend:latest"
+    - docker pull "${PRIVATE_IP}:5050/root/devops-board/backend:latest"
     - docker pull mysql:8.0
 
     # 2. 컨테이너들이 서로 통신할 가상 네트워크 생성
@@ -188,7 +197,7 @@ deploy-local:
         -e DB_DATABASE=$DB_DATABASE \
         -e FRONTEND_URL="$FRONTEND_URL" \
         -p $BACKEND_PORT:3000 \
-        "127.0.0.1:5050/root/devops-board/backend:latest"
+        "${PRIVATE_IP}:5050/root/devops-board/backend:latest"
 
     # 7. 빌드 도중 생성된 미사용 구형 레이어/이미지 찌꺼기 청소
     - docker image prune -f
