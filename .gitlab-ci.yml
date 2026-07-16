@@ -146,7 +146,8 @@ deploy-local:
     - mkdir -p /etc/docker
     # 💡 [보정] 싱글 쿼트 내부 변수 대입 에러 우회 적용 및 따옴표 기호 이스케이프 처리 완료
     - echo "{\"insecure-registries\":[\"${PRIVATE_IP}:5050\"]}" > /etc/docker/daemon.json
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "${PRIVATE_IP}:5050"
+    # 💡 [보정] 주소 앞에 http:// 를 강제로 붙여 HTTPS 강제 통신을 우회합니다!
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "http://${PRIVATE_IP}:5050"
   script:
     # 1. 깃랩 보관소 및 도커허브로부터 백엔드 및 MySQL 이미지 Pull 받아오기
     - docker pull "${PRIVATE_IP}:5050/root/devops-board/backend:latest"
