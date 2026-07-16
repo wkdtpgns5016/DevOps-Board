@@ -90,13 +90,19 @@ docker-build-all:
   image: docker:27
   needs: ["build-backend", "test-backend"]
   before_script:
+    # 1. 도커 컨테이너 내부에 레지스트리 비보안 허용 설정 주입
     - mkdir -p /etc/docker
-    - echo '{"insecure-registries":["$PRIVATE_IP:5050"]}' > /etc/docker/daemon.json
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - echo '{"insecure-registries":["127.0.0.1:5050"]}' > /etc/docker/daemon.json
+    
+    # 2. 호스트 IP(127.0.0.1)를 이용해서 로그인 처리
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin 127.0.0.1:5050
   script:
-    # 💡 백엔드 이미지만 생성하고 레지스트리에 푸시합니다.
-    - docker build -t "$BACK_IMAGE" backend
-    - docker push "$BACK_IMAGE"
+    # 💡 [핵심] 빌드할 때 --add-host 옵션을 주어 도커 빌드 내부에서만 도메인을 127.0.0.1로 매핑합니다!
+    - docker build --add-host gitlab.sehjang.kro.kr:127.0.0.1 -t "$BACK_IMAGE" ./backend
+    
+    # 💡 푸시할 때도 127.0.0.1 주소를 직접 찔러서 호스트 외부(ALB)로 나가지 않고 내부에서 직접 푸시합니다.
+    - docker tag "$BACK_IMAGE" "127.0.0.1:5050/root/devops-board/backend:latest"
+    - docker push "127.0.0.1:5050/root/devops-board/backend:latest"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
@@ -129,10 +135,12 @@ deploy-local:
   image: docker:27
   needs: ["docker-build-all"]
   before_script:
+    - mkdir -p /etc/docker
+    - echo '{"insecure-registries":["127.0.0.1:5050"]}' > /etc/docker/daemon.json
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY_IMAGE
   script:
     # 1. 깃랩 보관소 및 도커허브로부터 백엔드 및 MySQL 이미지 Pull 받아오기
-    - docker pull "$BACK_IMAGE"
+    - docker pull "127.0.0.1:5050/root/devops-board/backend:latest"
     - docker pull mysql:8.0
 
     # 2. 컨테이너들이 서로 통신할 가상 네트워크 생성
@@ -180,7 +188,7 @@ deploy-local:
         -e DB_DATABASE=$DB_DATABASE \
         -e FRONTEND_URL="$FRONTEND_URL" \
         -p $BACKEND_PORT:3000 \
-        "$BACK_IMAGE"
+        "127.0.0.1:5050/root/devops-board/backend:latest"
 
     # 7. 빌드 도중 생성된 미사용 구형 레이어/이미지 찌꺼기 청소
     - docker image prune -f
