@@ -93,7 +93,7 @@ docker-build-all:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
   script:
     # 💡 백엔드 이미지만 생성하고 레지스트리에 푸시합니다.
-    - docker build -t "$BACK_IMAGE" ../backend
+    - docker build -t "$BACK_IMAGE" backend
     - docker push "$BACK_IMAGE"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -117,7 +117,7 @@ deploy-frontend-s3:
     - /usr/local/bin/aws configure set default.region "$AWS_REGION"
   script:
     # 빌드 산출물 dist 폴더의 내용을 S3 버킷에 동기화시킵니다.
-    - aws s3 sync ../frontend/dist/ s3://$AWS_FRONTEND_S3_BUCKET --delete
+    - aws s3 sync frontend/dist/ s3://$AWS_FRONTEND_S3_BUCKET --delete
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
